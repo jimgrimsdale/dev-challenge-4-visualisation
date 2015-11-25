@@ -1,0 +1,137 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Dev Challenge 4 - Visualisation</title>
+    <meta name="author" content="James Grimsdale">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="./d3.min.js" charset="utf-8"></script>
+    <style>
+      #svgContainer {
+        margin-top: 10px;
+      }
+      svg {
+      }
+    </style>
+  </head>
+  <body>
+    <input id="fileInput" type="file"/>
+    <div id="svgContainer"></div>
+  </body>
+  <script>
+    var width = getWindowWidth() - 60,
+      height = getWindowHeight() - 60;
+
+    var svg = d3.select("#svgContainer")
+                      .append("svg")
+                      .attr("width", width)
+                      .attr("height", height);
+
+    function getWindowWidth() {
+      return window.innerWidth
+        || document.documentElement.clientWidth
+        || document.body.clientWidth;
+    }
+
+    function getWindowHeight() {
+      return window.innerHeight
+        || document.documentElement.clientHeight
+        || document.body.clientHeight;
+    }
+
+    function addLine(x1, x2, colour) {
+      svg.append("line")
+                  .attr("x1", x1)
+                  .attr("y1", 0)
+                  .attr("x2", x2)
+                  .attr("y2", height)
+                  .attr("stroke-width", 5)
+                  .attr("stroke", colour);
+    }
+
+    function getColour(n) {
+      switch(n) {
+        case 0: return "#44B3C2";
+        case 1: return "#F1A94E";
+        case 2: return "#E45641";
+        case 3: return "#5D4C46";
+        case 4: return "#7B8D8E";
+        case 5: return "#F2EDD8";
+        case 6: return "#006495";
+        case 7: return "#004C70";
+        case 8: return "#0093D1";
+        case 9: return "#F2635F";
+        case 10: return "#F4D00C";
+        case 11: return "#E0A025";
+      }
+    }
+
+    function getX2(x1, intX1) {
+      switch(intX1) {
+        case 0: return x1 + 30;
+        case 1: return x1 - 30;
+        case 2: return x1 + 100;
+        case 3: return x1 - 100;
+      }
+    }
+
+    function readSingleFile(evt) {
+      var f = evt.target.files[0];
+
+      if (!f) {
+        alert("Failed to load file");
+        return;
+      }
+      if (!f.type.match('text.*')) {
+        alert(f.name + " is not a valid text file.");
+        return;
+      }
+      var r = new FileReader();
+      r.onload = function(e) {
+        var contents = e.target.result;
+        start(contents);
+      }
+      r.readAsText(f);
+    }
+
+    function getX1(intX1) {
+      return intX1 * (width / 2048);
+    }
+
+    function start(strBinary) {
+      var strThreeDigits,
+        strTwoDigits,
+        strTenDigits,
+        intColour,
+        intX1,
+        intX2,
+        x1,
+        x2,
+        i;
+
+      for(i = 0; i < 100; i++) {
+        if (strBinary.length >= 16) {
+          strThreeDigits = strBinary.substring(0, 3);
+          strBinary = strBinary.slice(3);
+          intColour = parseInt(strThreeDigits, 2);
+
+          strTenDigits = strBinary.substring(0, 11);
+          strBinary = strBinary.slice(11);
+          intX1 = parseInt(strTenDigits, 2);
+
+          strTwoDigits = strBinary.substring(0, 2);
+          strBinary = strBinary.slice(2);
+          intX2 = parseInt(strTwoDigits, 2);
+
+          colour = getColour(intColour);
+          x1 = intX1 - 100;
+          x2 = getX2(x1, intX2);
+
+          addLine(x1, x2, colour);
+        }
+      }
+    }
+
+    document.getElementById('fileInput').addEventListener('change', readSingleFile, false);
+
+  </script>
+</html>
