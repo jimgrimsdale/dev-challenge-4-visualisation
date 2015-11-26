@@ -9,8 +9,6 @@
       #svgContainer {
         margin-top: 10px;
       }
-      svg {
-      }
     </style>
   </head>
   <body>
@@ -19,12 +17,15 @@
   </body>
   <script>
     var width = getWindowWidth() - 60,
-      height = getWindowHeight() - 60;
+      height = getWindowHeight() - 60,
+      data = [];
 
     var svg = d3.select("#svgContainer")
-                      .append("svg")
-                      .attr("width", width)
-                      .attr("height", height);
+                .append("svg")
+                .attr("width", width)
+                .attr("height", height);
+
+    var group = svg.append("g");
 
     function getWindowWidth() {
       return window.innerWidth
@@ -36,16 +37,6 @@
       return window.innerHeight
         || document.documentElement.clientHeight
         || document.body.clientHeight;
-    }
-
-    function addLine(x1, x2, colour) {
-      svg.append("line")
-                  .attr("x1", x1)
-                  .attr("y1", 0)
-                  .attr("x2", x2)
-                  .attr("y2", height)
-                  .attr("stroke-width", 5)
-                  .attr("stroke", colour);
     }
 
     function getColour(n) {
@@ -65,8 +56,8 @@
       }
     }
 
-    function getX2(x1, intX1) {
-      switch(intX1) {
+    function getX2(x1, n) {
+      switch(n) {
         case 0: return x1 + 30;
         case 1: return x1 - 30;
         case 2: return x1 + 100;
@@ -97,38 +88,125 @@
       return intX1 * (width / 2048);
     }
 
-    function start(strBinary) {
-      var strThreeDigits,
-        strTwoDigits,
-        strTenDigits,
-        intColour,
+    function updateData(objStrBinary) {
+      var intColour,
         intX1,
         intX2,
         x1,
         x2,
         i;
+      
+      data = [];
 
-      for(i = 0; i < 100; i++) {
-        if (strBinary.length >= 16) {
-          strThreeDigits = strBinary.substring(0, 3);
-          strBinary = strBinary.slice(3);
-          intColour = parseInt(strThreeDigits, 2);
-
-          strTenDigits = strBinary.substring(0, 11);
-          strBinary = strBinary.slice(11);
-          intX1 = parseInt(strTenDigits, 2);
-
-          strTwoDigits = strBinary.substring(0, 2);
-          strBinary = strBinary.slice(2);
-          intX2 = parseInt(strTwoDigits, 2);
+      for(i = 0; i < 20; i++) {
+        if (objStrBinary.strBinary.length >= 16) {
+          intColour = getNextInteger(objStrBinary, 3);
+          intX1 = getNextInteger(objStrBinary, 11);
+          intX2 = getNextInteger(objStrBinary, 2);
 
           colour = getColour(intColour);
           x1 = intX1 - 100;
           x2 = getX2(x1, intX2);
 
-          addLine(x1, x2, colour);
+          data.push({ x1: x1, x2: x2, colour: colour });
         }
       }
+    }
+
+    function getMoveX1(n) {
+      switch(n) {
+        case 0: return 30;
+        case 1: return 60;
+        case 2: return 90;
+        case 3: return -30;
+        case 4: return -60;
+        case 5: return -90;
+        case 6: return 0;
+        case 7: return 0;
+      }
+    }
+
+    function updateData2(objStrBinary) {
+      data.forEach(function(item) {
+        if (objStrBinary.strBinary.length >= 5) {
+          var intMoveX1 = getNextInteger(objStrBinary, 3);
+          var moveX1 = getMoveX1(intMoveX1);
+          var intX2 = getNextInteger(objStrBinary, 2);
+          item.x1 = item.x1 + moveX1;
+          item.x2 = getX2(item.x1, intX2);
+          if (item.x1 < -100) {
+            item.x1 = item.x1 + 100;
+            item.x2 = item.x2 + 100;
+          }
+          if (item.x2 < -100) {
+            item.x2 = item.x2 + 100;
+            item.x1 = item.x1 + 100;
+          }
+          if (item.x1 > width + 100) {
+            item.x1 = item.x1 - 100;
+            item.x2 = item.x2 - 100;
+          }
+          if (item.x2 > width + 100) {
+            item.x2 = item.x2 - 100;
+            item.x1 = item.x1 - 100;
+          }
+        }
+      });
+    }
+
+    function getNextInteger(objStrBinary, n) {
+      var binarySubstring = objStrBinary.strBinary.substring(0, n);
+      objStrBinary.strBinary = objStrBinary.strBinary.slice(n);
+      return parseInt(binarySubstring, 2);
+    }
+
+    function start(strBinary) {
+      var objStrBinary = {strBinary: strBinary};
+      updateData(objStrBinary);      
+
+      var lines = group.selectAll("line")
+        .data(data)
+        .enter()
+        .append("line");
+
+      lines
+        .attr("x1", function (d) { 
+          return d.x1; 
+        })
+        .attr("x2", function (d) { return d.x2; })
+        .attr("y1", function(d) { return 0; })
+        .attr("y2", function(d) { return height; })
+        .attr("stroke-width", function(d) { return 5; })
+        .attr("stroke", function(d) { return d.colour; });
+
+      move();
+
+      function move() {
+        updateData2(objStrBinary);
+
+        lines.data(data);
+
+        lines.each(function() {
+          var thisLine = d3.select(this);
+          var thisLineX1 = parseInt(thisLine.attr("x1"), 10);
+          thisLine.transition()
+                  .duration(800)
+                  .attr("x1", function (d) { 
+                    return d.x1; 
+                  })
+                  .attr("x2", function (d) { return d.x2; })
+                  .attr("y1", function(d) { return 0; })
+                  .attr("y2", function(d) { return height; })
+                  .attr("stroke-width", function(d) { return 5; })
+                  .attr("stroke", function(d) { return d.colour; })
+                  .each("end", function() {
+                    if (objStrBinary.strBinary.length >= 5) {
+                      move();
+                    }
+                  });
+        });
+      }
+
     }
 
     document.getElementById('fileInput').addEventListener('change', readSingleFile, false);
