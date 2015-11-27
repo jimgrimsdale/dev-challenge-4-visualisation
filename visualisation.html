@@ -39,56 +39,7 @@
         || document.body.clientHeight;
     }
 
-    function getColour(n) {
-      switch(n) {
-        case 0: return "#44B3C2";
-        case 1: return "#F1A94E";
-        case 2: return "#E45641";
-        case 3: return "#5D4C46";
-        case 4: return "#7B8D8E";
-        case 5: return "#F2EDD8";
-        case 6: return "#006495";
-        case 7: return "#004C70";
-        case 8: return "#0093D1";
-        case 9: return "#F2635F";
-        case 10: return "#F4D00C";
-        case 11: return "#E0A025";
-      }
-    }
-
-    function getX2(x1, n) {
-      switch(n) {
-        case 0: return x1 + 30;
-        case 1: return x1 - 30;
-        case 2: return x1 + 100;
-        case 3: return x1 - 100;
-      }
-    }
-
-    function readSingleFile(evt) {
-      var f = evt.target.files[0];
-
-      if (!f) {
-        alert("Failed to load file");
-        return;
-      }
-      if (!f.type.match('text.*')) {
-        alert(f.name + " is not a valid text file.");
-        return;
-      }
-      var r = new FileReader();
-      r.onload = function(e) {
-        var contents = e.target.result;
-        start(contents);
-      }
-      r.readAsText(f);
-    }
-
-    function getX1(intX1) {
-      return intX1 * (width / 2048);
-    }
-
-    function updateData(objStrBinary) {
+    function setData(objStrBinary) {
       var intColour,
         intX1,
         intX2,
@@ -108,8 +59,53 @@
           x1 = intX1 - 100;
           x2 = getX2(x1, intX2);
 
+          x1 = getActualX(x1);
+          x2 = getActualX(x2);
+
           data.push({ x1: x1, x2: x2, colour: colour });
         }
+      }
+    }
+
+    function updateData(objStrBinary) {
+      data.forEach(function(item) {
+        if (objStrBinary.strBinary.length >= 5) {
+          var intMoveX1 = getNextInteger(objStrBinary, 3);
+          var moveX1 = getMoveX1(intMoveX1);
+          var intX2 = getNextInteger(objStrBinary, 2);
+          item.x1 = item.x1 + moveX1;
+          item.x2 = getX2(item.x1, intX2);
+        }
+      });
+    }
+
+    function getActualX(intX1) {
+      return Math.floor(intX1 * (width / 2048));
+    }
+
+    function getColour(n) {
+      switch(n) {
+        case 0: return "#44B3C2";
+        case 1: return "#F1A94E";
+        case 2: return "#E45641";
+        case 3: return "#5D4C46";
+        case 4: return "#7B8D8E";
+        case 5: return "#F2EDD8";
+        case 6: return "#006495";
+        case 7: return "#004C70";
+        case 8: return "#0093D1";
+        case 9: return "#F2635F";
+        case 10: return "#F4D00C";
+        case 11: return "#E0A025";
+      }
+    }
+        
+    function getX2(x1, n) {
+      switch(n) {
+        case 0: return x1 + 30;
+        case 1: return x1 - 30;
+        case 2: return x1 + 100;
+        case 3: return x1 - 100;
       }
     }
 
@@ -126,34 +122,6 @@
       }
     }
 
-    function updateData2(objStrBinary) {
-      data.forEach(function(item) {
-        if (objStrBinary.strBinary.length >= 5) {
-          var intMoveX1 = getNextInteger(objStrBinary, 3);
-          var moveX1 = getMoveX1(intMoveX1);
-          var intX2 = getNextInteger(objStrBinary, 2);
-          item.x1 = item.x1 + moveX1;
-          item.x2 = getX2(item.x1, intX2);
-          if (item.x1 < -100) {
-            item.x1 = item.x1 + 100;
-            item.x2 = item.x2 + 100;
-          }
-          if (item.x2 < -100) {
-            item.x2 = item.x2 + 100;
-            item.x1 = item.x1 + 100;
-          }
-          if (item.x1 > width + 100) {
-            item.x1 = item.x1 - 100;
-            item.x2 = item.x2 - 100;
-          }
-          if (item.x2 > width + 100) {
-            item.x2 = item.x2 - 100;
-            item.x1 = item.x1 - 100;
-          }
-        }
-      });
-    }
-
     function getNextInteger(objStrBinary, n) {
       var binarySubstring = objStrBinary.strBinary.substring(0, n);
       objStrBinary.strBinary = objStrBinary.strBinary.slice(n);
@@ -162,17 +130,14 @@
 
     function start(strBinary) {
       var objStrBinary = {strBinary: strBinary};
-      updateData(objStrBinary);      
+      setData(objStrBinary);      
 
       var lines = group.selectAll("line")
         .data(data)
         .enter()
         .append("line");
 
-      lines
-        .attr("x1", function (d) { 
-          return d.x1; 
-        })
+      lines.attr("x1", function (d) { return d.x1; })
         .attr("x2", function (d) { return d.x2; })
         .attr("y1", function(d) { return 0; })
         .attr("y2", function(d) { return height; })
@@ -182,7 +147,7 @@
       move();
 
       function move() {
-        updateData2(objStrBinary);
+        updateData(objStrBinary);
 
         lines.data(data);
 
@@ -209,7 +174,52 @@
 
     }
 
+    function readSingleFile(evt) {
+      var f = evt.target.files[0];
+
+      if (!f) {
+        alert("Failed to load file");
+        return;
+      }
+      if (!f.type.match('text.*')) {
+        alert(f.name + " is not a valid text file.");
+        return;
+      }
+      var r = new FileReader();
+      r.onload = function(e) {
+        var contents = e.target.result;
+        start(contents);
+      }
+      r.readAsText(f);
+    }
+
     document.getElementById('fileInput').addEventListener('change', readSingleFile, false);
+
+    function xStartBinary(firstX, spacing, prepend, append) {
+      var numbers = [];
+      for(var i = 0; i < 10; i++) {
+        numbers.push(firstX + (i * spacing));
+      }
+      return createBinaryFromNumbers(numbers, prepend, append);
+    }
+
+    function createBinaryFromNumbers(numbers, prepend, append) {
+      var result = "";
+      numbers.forEach(function(n) {
+        var binary = decTo11DigitBinary(n);
+        result = result + prepend + binary + append;
+      });
+      return result;
+    }
+
+    function decTo11DigitBinary(dec) {
+      strBinary = (dec >>> 0).toString(2);
+      var zerosToAdd = 11 - strBinary.length;
+      for(var i = 0; i < zerosToAdd; i++) {
+        strBinary = "0" + strBinary;
+      }
+      return strBinary;
+    }
 
   </script>
 </html>
